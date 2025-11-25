@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Controle de Medicamentos — Dashboard Corporativo</title>
+<link rel="icon" href="data:;base64,iVBORw0KGgo=">
+<style>
+  :root{
+    --bg:#f4f6f9;
+    --card:#ffffff;
+    --muted:#7b8794;
+    --primary:#0b63c6;
+    --accent:#0a84ff;
+    --success:#16a34a;
+    --danger:#ef4444;
+    --glass: rgba(255,255,255,0.6);
+    --radius:12px;
+    --shadow: 0 6px 18px rgba(20,30,60,0.08);
+    --transition:200ms cubic-bezier(.2,.9,.3,1);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:linear-gradient(180deg,#f7f9fc 0%, var(--bg) 100%);color:#0f1724}
+  .app{
+    max-width:1200px;margin:28px auto;padding:20px;
+  }
+  header.topbar{
+    display:flex;align-items:center;gap:16px;justify-content:space-between;margin-bottom:18px;
+  }
+  .brand{
+    display:flex;align-items:center;gap:12px;
+  }
+  .logo{
+    width:52px;height:52px;border-radius:10px;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:18px;box-shadow:var(--shadow)
+  }
+  h1{font-size:18px;margin:0}
+  p.subtitle{margin:0;color:var(--muted);font-size:13px}
+
+  /* Top nav */
+  nav.topnav{
+    display:flex;gap:8px;align-items:center;padding:8px 0;
+  }
+  nav.topnav button{
+    background:transparent;border:0;padding:10px 14px;border-radius:10px;color:var(--muted);cursor:pointer;transition:all var(--transition);
+    font-weight:600;
+  }
+  nav.topnav button.active{background:linear-gradient(90deg,var(--primary),var(--accent));color:white;box-shadow:0 8px 20px rgba(10,132,255,0.12)}
+  nav.topnav button:hover{transform:translateY(-3px);color:var(--primary)}
+
+  /* Content area */
+  .content{
+    margin-top:18px;display:grid;grid-template-columns:1fr;gap:18px;
+  }
+
+  .card{
+    background:var(--card);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);border:1px solid rgba(15,23,36,0.04);
+  }
+
+  /* Dashboard grid */
+  .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  .stat{padding:14px;border-radius:10px;background:linear-gradient(180deg,rgba(10,132,255,0.05),transparent);display:flex;flex-direction:column;gap:6px}
+  .stat .label{font-size:13px;color:var(--muted)}
+  .stat .value{font-size:20px;font-weight:700;color:#062244}
+
+  /* table small */
+  .table{width:100%;border-collapse:collapse}
+  .table th,.table td{padding:10px 12px;text-align:left;border-bottom:1px solid rgba(15,23,36,0.04);font-size:14px}
+  .table th{font-weight:700;color:var(--muted);font-size:13px}
+  .actions button{margin-right:8px}
+
+  /* forms */
+  .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .form-row{display:flex;flex-direction:column;gap:6px}
+  label{font-size:13px;color:var(--muted);font-weight:600}
+  input,select,textarea{padding:10px;border-radius:8px;border:1px solid rgba(15,23,36,0.06);background:transparent}
+  textarea{min-height:84px}
+
+  .btn{padding:10px 14px;border-radius:10px;border:0;cursor:pointer;font-weight:700;transition:all var(--transition)}
+  .btn-primary{background:linear-gradient(90deg,var(--primary),var(--accent));color:white;box-shadow:0 8px 20px rgba(10,132,255,0.08)}
+  .btn-ghost{background:transparent;border:1px solid rgba(15,23,36,0.06);color:var(--muted)}
+
+  /* responsive */
+  @media (max-width:1000px){.stats-grid{grid-template-columns:repeat(2,1fr)}.grid-3{grid-template-columns:1fr}}
+  @media (max-width:600px){.stats-grid{grid-template-columns:1fr}nav.topnav{overflow:auto}header.topbar{flex-direction:column;align-items:flex-start;gap:12px}}
+
+  /* small helper */
+  .muted{color:var(--muted);font-size:13px}
+  .right{display:flex;gap:8px;align-items:center}
+  .pill{padding:6px 10px;border-radius:999px;background:rgba(10,132,255,0.08);font-weight:700;color:var(--primary)}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">CM</div>
+      <div>
+        <h1>Controle Medicamentos</h1>
+        <p class="subtitle">Dashboard corporativo — multiusuário em tempo real</p>
+      </div>
+    </div>
+    <div class="right">
+      <div class="pill" id="userStatus">Conectando...</div>
+      <button class="btn btn-ghost" id="refreshBtn">Refresh</button>
+    </div>
+  </header>
+
+  <nav class="topnav" aria-label="menu">
+    <button class="active" data-view="dashboard">Dashboard</button>
+    <button data-view="entrada">Entrada</button>
+    <button data-view="saida">Saída</button>
+    <button data-view="estoque">Estoque</button>
+    <button data-view="relatorios">Relatórios</button>
+  </nav>
+
+  <main class="content">
+    <!-- Dashboard View -->
+    <section id="view-dashboard" class="card view">
+      <div class="stats-grid" style="margin-bottom:14px">
+        <div class="stat card">
+          <div class="label">Total em Estoque</div>
+          <div class="value" id="totalStock">0</div>
+        </div>
+        <div class="stat card">
+          <div class="label">Próximos ao Vencimento</div>
+          <div class="value" id="nearExpiry">0</div>
+        </div>
+        <div class="stat card">
+          <div class="label">Medicamentos Vencidos</div>
+          <div class="value" id="expired">0</div>
+        </div>
+        <div class="stat card">
+          <div class="label">Total de Doadores</div>
+          <div class="value" id="totalDonors">0</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:14px">
+        <div class="card">
+          <h3 style="margin:0 0 12px 0">Atividade recente</h3>
+          <div id="recentActivity"></div>
+        </div>
+        <div class="card">
+          <h3 style="margin:0 0 12px 0">Alertas</h3>
+          <div id="alertsContainer"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Entrada View -->
+    <section id="view-entrada" class="card view" style="display:none">
+      <h3>Registrar Entrada</h3>
+      <form id="entryForm">
+        <div class="grid-3" style="margin-top:12px">
+          <div class="form-row"><label>Data de Entrada</label><input type="date" id="entryDate" required></div>
+          <div class="form-row"><label>Nome do Doador</label><input type="text" id="donorName" required placeholder="Nome / instituição"></div>
+          <div class="form-row"><label>Medicamento</label><input type="text" id="medName" required placeholder="Ex: Paracetamol 500mg"></div>
+        </div>
+        <div class="grid-3" style="margin-top:12px">
+          <div class="form-row"><label>Quantidade</label><input type="number" id="quantity" required min="1"></div>
+          <div class="form-row"><label>Data de Validade</label><input type="date" id="expiryDate" required></div>
+          <div class="form-row"><label>Lote</label><input type="text" id="batch" placeholder="Lote (opcional)"></div>
+        </div>
+        <div style="margin-top:12px"><label>Observações</label><textarea id="observations"></textarea></div>
+        <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn btn-ghost" type="reset">Limpar</button>
+          <button class="btn btn-primary" type="submit">Registrar Entrada</button>
+        </div>
+      </form>
+
+      <hr style="margin:18px 0">
+      <h4>Histórico de Entradas</h4>
+      <div style="margin:8px 0;display:flex;gap:8px;align-items:center">
+        <input id="entrySearch" placeholder="Pesquisar..." style="flex:1;padding:8px;border-radius:8px;border:1px solid rgba(15,23,36,0.05)">
+        <select id="entrySort" style="padding:8px;border-radius:8px;border:1px solid rgba(15,23,36,0.05)">
+          <option value="date-desc">Data (mais recente)</option>
+          <option value="date-asc">Data (mais antiga)</option>
+          <option value="med-asc">Medicamento (A-Z)</option>
+        </select>
+      </div>
+      <div id="entryTableContainer"></div>
+    </section>
+
+    <!-- Saída View -->
+    <section id="view-saida" class="card view" style="display:none">
+      <h3>Registrar Saída</h3>
+      <form id="exitForm">
+        <div class="grid-3" style="margin-top:12px">
+          <div class="form-row"><label>Data de Saída</label><input type="date" id="exitDate" required></div>
+          <div class="form-row"><label>Beneficiário</label><input type="text" id="recipientName" required></div>
+          <div class="form-row"><label>Responsável</label><input type="text" id="responsibleName" required></div>
+        </div>
+        <div class="grid-3" style="margin-top:12px">
+          <div class="form-row" style="grid-column:span 2"><label>Medicamento</label><select id="exitMedication"><option value="">Selecione</option></select></div>
+          <div class="form-row"><label>Quantidade</label><input type="number" id="exitQuantity" required min="1"></div>
+        </div>
+        <div style="margin-top:12px" id="availableInfo" class="muted"></div>
+        <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn btn-ghost" type="reset">Limpar</button>
+          <button class="btn btn-primary" type="submit">Registrar Saída</button>
+        </div>
+      </form>
+
+      <hr style="margin:18px 0">
+      <h4>Histórico de Saídas</h4>
+      <div style="margin:8px 0;display:flex;gap:8px;align-items:center">
+        <input id="exitSearch" placeholder="Pesquisar..." style="flex:1;padding:8px;border-radius:8px;border:1px solid rgba(15,23,36,0.05)">
+        <select id="exitSort" style="padding:8px;border-radius:8px;border:1px solid rgba(15,23,36,0.05)">
+          <option value="date-desc">Data (mais recente)</option>
+          <option value="date-asc">Data (mais antiga)</option>
+          <option value="med-asc">Medicamento (A-Z)</option>
+        </select>
+      </div>
+      <div id="exitTableContainer"></div>
+    </section>
+
+    <!-- Estoque View -->
+    <section id="view-estoque" class="card view" style="display:none">
+      <h3>Estoque Atual</h3>
+      <div style="margin:8px 0;display:flex;gap:8px;align-items:center">
+        <input id="stockSearch" placeholder="Pesquisar..." style="flex:1;padding:8px;border-radius:8px;border:1px solid rgba(15,23,36,0.05)">
+        <select id="stockFilter" style="padding:8px;border-radius:8px;border:1px solid rgba(15,23,36,0.05)">
+          <option value="all">Todos</option><option value="ok">Validade OK</option><option value="warning">Próx. venc.</option><option value="expired">Vencidos</option>
+        </select>
+        <select id="stockSort" style="padding:8px;border-radius:8px;border:1px solid rgba(15,23,36,0.05)">
+          <option value="med-asc">Medicamento (A-Z)</option><option value="qty-desc">Quantidade</option><option value="expiry-asc">Validade</option>
+        </select>
+      </div>
+      <div id="stockTableContainer"></div>
+    </section>
+
+    <!-- Relatórios View -->
+    <section id="view-relatorios" class="card view" style="display:none">
+      <h3>Relatórios</h3>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:12px">
+        <div class="card"><h4>Maiores Doadores</h4><div id="topDonorsReport"></div></div>
+        <div class="card"><h4>Medicamentos Mais Dispensados</h4><div id="topMedicationsReport"></div></div>
+      </div>
+      <div style="margin-top:12px" class="card"><h4>Medicamentos com Maior Tempo Parado</h4><div id="slowMovingReport"></div></div>
+      <div style="margin-top:12px" class="card"><h4>Resumo de Movimentações</h4><div id="movementSummary"></div></div>
+    </section>
+  </main>
+</div>
+
+<!-- Firebase + App (module) -->
+<script type="module">
+// ---------- FIREBASE CONFIG (from user) ----------
+const firebaseConfig = {
+  apiKey: "AIzaSyClqe_Fw9CLhy_6Hcwgq8LIV5IRf6nVIjg",
+  authDomain: "controle-medicamentos-59930.firebaseapp.com",
+  projectId: "controle-medicamentos-59930",
+  storageBucket: "controle-medicamentos-59930.firebasestorage.app",
+  messagingSenderId: "150482741016",
+  appId: "1:150482741016:web:59065bb4dedcc09636e06d"
+};
+
+// ---------- Firebase modular SDK ----------
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const entriesCol = collection(db,'entries');
+const exitsCol = collection(db,'exits');
+
+let entries = [];
+let exits = [];
+
+// Utilities
+function formatDate(d){ if(!d) return '-'; const dt=new Date(d+'T00:00:00'); return dt.toLocaleDateString('pt-BR'); }
+function getExpiryStatus(expiryDate){ const today=new Date(); const expiry=new Date(expiryDate); const days=Math.floor((expiry-today)/(1000*60*60*24)); if(days<0) return 'expired'; if(days<=30) return 'warning'; return 'ok'; }
+
+// Firestore realtime listeners
+function listenEntries(){
+  const q = query(entriesCol, orderBy('entryDate','asc'));
+  onSnapshot(q, snapshot => {
+    entries = [];
+    snapshot.forEach(s => {
+      entries.push({ id:s.id, ...s.data() });
+    });
+    renderAll();
+  });
+}
+function listenExits(){
+  const q = query(exitsCol, orderBy('exitDate','asc'));
+  onSnapshot(q, snapshot => {
+    exits = [];
+    snapshot.forEach(s => {
+      exits.push({ id:s.id, ...s.data() });
+    });
+    renderAll();
+  });
+}
+
+// CRUD
+async function addEntryToFirestore(data){
+  try{ await addDoc(entriesCol, {...data, createdAt: serverTimestamp()}); }catch(e){ console.error(e); alert('Erro ao salvar entrada'); }
+}
+async function addExitToFirestore(data){
+  try{ await addDoc(exitsCol, {...data, createdAt: serverTimestamp()}); }catch(e){ console.error(e); alert('Erro ao salvar saída'); }
+}
+async function deleteEntryFromFirestore(id){
+  try{ await deleteDoc(doc(db,'entries',id)); }catch(e){ console.error(e); alert('Erro ao deletar'); }
+}
+async function deleteExitFromFirestore(id){
+  try{ await deleteDoc(doc(db,'exits',id)); }catch(e){ console.error(e); alert('Erro ao deletar'); }
+}
+
+// Calculate stock
+function calculateStock(){
+  const stock = {};
+  entries.forEach(en => {
+    if(!stock[en.medName]) stock[en.medName]=[];
+    stock[en.medName].push({ entryId:en.id, batch:en.batch, expiryDate:en.expiryDate, quantity:en.quantity });
+  });
+  exits.forEach(ex => {
+    if(stock[ex.medName]){
+      const idx = stock[ex.medName].findIndex(b => b.batch===ex.batch && b.expiryDate===ex.expiryDate);
+      if(idx!==-1) stock[ex.medName][idx].quantity -= ex.quantity;
+    }
+  });
+  const result = [];
+  Object.keys(stock).forEach(m => {
+    const batches = stock[m].filter(b=>b.quantity>0);
+    if(batches.length>0){
+      result.push({ medName:m, quantity:batches.reduce((s,b)=>s+b.quantity,0), batches });
+    }
+  });
+  return result;
+}
+
+function getAvailableBatches(medName){
+  const stock = calculateStock();
+  const item = stock.find(s=>s.medName===medName);
+  if(!item) return [];
+  return item.batches.map(b=>({...b, available:b.quantity})).sort((a,b)=> new Date(a.expiryDate)-new Date(b.expiryDate));
+}
+
+// Render functions (simplified/adapted)
+function renderEntryTable(){
+  const container = document.getElementById('entryTableContainer');
+  const search = document.getElementById('entrySearch').value.toLowerCase();
+  const sort = document.getElementById('entrySort').value;
+  let list = entries.filter(e => e.medName.toLowerCase().includes(search) || e.donorName.toLowerCase().includes(search) || (e.batch && e.batch.toLowerCase().includes(search)));
+  list.sort((a,b)=> {
+    switch(sort){ case 'date-desc': return new Date(b.entryDate)-new Date(a.entryDate); case 'date-asc': return new Date(a.entryDate)-new Date(b.entryDate); case 'med-asc': return a.medName.localeCompare(b.medName); default: return 0; }
+  });
+  if(list.length===0){ container.innerHTML = '<div class="muted">Nenhuma entrada encontrada</div>'; return; }
+  let html = '<table class="table"><thead><tr><th>Data</th><th>Doador</th><th>Medicamento</th><th>Qtd</th><th>Validade</th><th>Lote</th><th>Actions</th></tr></thead><tbody>';
+  list.forEach(it=>{
+    html += `<tr><td>${formatDate(it.entryDate)}</td><td>${it.donorName}</td><td><strong>${it.medName}</strong></td><td>${it.quantity}</td><td>${formatDate(it.expiryDate)}</td><td>${it.batch||'-'}</td><td class="actions"><button class="btn btn-ghost" onclick="confirmDeleteEntry('${it.id}')">Excluir</button></td></tr>`;
+  });
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+function renderExitTable(){
+  const container = document.getElementById('exitTableContainer');
+  const search = document.getElementById('exitSearch').value.toLowerCase();
+  const sort = document.getElementById('exitSort').value;
+  let list = exits.filter(e => e.medName.toLowerCase().includes(search) || e.recipientName.toLowerCase().includes(search));
+  list.sort((a,b)=> {
+    switch(sort){ case 'date-desc': return new Date(b.exitDate)-new Date(a.exitDate); case 'date-asc': return new Date(a.exitDate)-new Date(b.exitDate); case 'med-asc': return a.medName.localeCompare(b.medName); default: return 0; }
+  });
+  if(list.length===0){ container.innerHTML = '<div class="muted">Nenhuma saída encontrada</div>'; return; }
+  let html = '<table class="table"><thead><tr><th>Data</th><th>Beneficiário</th><th>Responsável</th><th>Medicamento</th><th>Qtd</th><th>Lote</th><th>Actions</th></tr></thead><tbody>';
+  list.forEach(it=>{
+    html += `<tr><td>${formatDate(it.exitDate)}</td><td>${it.recipientName}</td><td>${it.responsibleName}</td><td><strong>${it.medName}</strong></td><td>${it.quantity}</td><td>${it.batch||'-'}</td><td class="actions"><button class="btn btn-ghost" onclick="confirmCancelExit('${it.id}')">Cancelar</button></td></tr>`;
+  });
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+function renderStockTable(){
+  const container = document.getElementById('stockTableContainer');
+  const search = document.getElementById('stockSearch').value.toLowerCase();
+  const filter = document.getElementById('stockFilter').value;
+  const sort = document.getElementById('stockSort').value;
+  let stock = calculateStock();
+  stock = stock.filter(s=> s.medName.toLowerCase().includes(search));
+  if(filter!=='all'){ stock = stock.filter(item=> { const earliest = Math.min(...item.batches.map(b=>new Date(b.expiryDate))); const status = getExpiryStatus(new Date(earliest).toISOString().split('T')[0]); return status===filter; }); }
+  stock.sort((a,b)=>{ switch(sort){ case 'med-asc': return a.medName.localeCompare(b.medName); case 'qty-desc': return b.quantity-a.quantity; case 'expiry-asc': return Math.min(...a.batches.map(b=>new Date(b.expiryDate))) - Math.min(...b.batches.map(b=>new Date(b.expiryDate))); default: return 0; } });
+  if(stock.length===0){ container.innerHTML = '<div class="muted">Nenhum medicamento em estoque</div>'; return; }
+  let html = '<table class="table"><thead><tr><th>Medicamento</th><th>Quantidade</th><th>Lotes</th><th>Validade</th></tr></thead><tbody>';
+  stock.forEach(item=>{
+    const earliest = Math.min(...item.batches.map(b=>new Date(b.expiryDate)));
+    html += `<tr><td><strong>${item.medName}</strong></td><td>${item.quantity}</td><td>${item.batches.length}</td><td>${formatDate(new Date(earliest).toISOString().split('T')[0])}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+function updateExitMedicationDropdown(){
+  const sel = document.getElementById('exitMedication');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Selecione</option>';
+  const stock = calculateStock();
+  stock.forEach(it=>{ const opt = document.createElement('option'); opt.value = it.medName; opt.textContent = `${it.medName} (${it.quantity})`; sel.appendChild(opt); });
+  if(cur){ sel.value = cur; }
+}
+
+function updateDashboard(){
+  const stock = calculateStock();
+  document.getElementById('totalStock').textContent = stock.reduce((s,i)=>s+i.quantity,0);
+  let near=0, expired=0;
+  stock.forEach(it=> it.batches.forEach(b=> { const st = getExpiryStatus(b.expiryDate); if(st==='warning') near+=b.quantity; if(st==='expired') expired+=b.quantity; }));
+  document.getElementById('nearExpiry').textContent = near;
+  document.getElementById('expired').textContent = expired;
+  document.getElementById('totalDonors').textContent = [...new Set(entries.map(e=>e.donorName))].length;
+
+  // Alerts & Recent
+  const alerts = document.getElementById('alertsContainer');
+  let ahtml=''; if(expired>0) ahtml+=`<div class="muted" style="color:${'var(--danger)'}">⚠️ ${expired} unidades vencidas</div>`; if(near>0) ahtml+=`<div class="muted" style="color:${'var(--danger)'}">⚠️ ${near} unidades próximas ao vencimento</div>`; if(!ahtml) ahtml='<div class="muted">Tudo em ordem</div>'; alerts.innerHTML=ahtml;
+
+  const recent = document.getElementById('recentActivity');
+  const re = entries.slice(-3).reverse(); const rx = exits.slice(-3).reverse();
+  let rhtml='<h4>Entradas recentes</h4>'; if(re.length){ rhtml+='<ul>'; re.forEach(it=> rhtml+=`<li>${formatDate(it.entryDate)} • <strong>${it.medName}</strong> • ${it.quantity} • ${it.donorName}</li>`); rhtml+='</ul>' } else rhtml+='<div class="muted">Nenhuma entrada</div>';
+  rhtml+='<h4 style="margin-top:12px">Saídas recentes</h4>'; if(rx.length){ rhtml+='<ul>'; rx.forEach(it=> rhtml+=`<li>${formatDate(it.exitDate)} • <strong>${it.medName}</strong> • ${it.quantity} • ${it.recipientName}</li>`); rhtml+='</ul>' } else rhtml+='<div class="muted">Nenhuma saída</div>';
+  recent.innerHTML = rhtml;
+}
+
+function generateReports(){
+  const donorStats = {}; entries.forEach(e=>{ if(!donorStats[e.donorName]) donorStats[e.donorName]={count:0,qty:0}; donorStats[e.donorName].count++; donorStats[e.donorName].qty+=e.quantity; });
+  const topDonors = Object.entries(donorStats).sort((a,b)=>b[1].qty-a[1].qty).slice(0,5);
+  let dh='<table class="table"><thead><tr><th>Pos</th><th>Doador</th><th>Qtd</th></tr></thead><tbody>'; topDonors.forEach((d,i)=> dh+=`<tr><td>${i+1}</td><td>${d[0]}</td><td>${d[1].qty}</td></tr>`); dh+='</tbody></table>'; document.getElementById('topDonorsReport').innerHTML = dh;
+
+  const medStats={}; exits.forEach(e=>{ if(!medStats[e.medName]) medStats[e.medName]=0; medStats[e.medName]+=e.quantity; });
+  const topM = Object.entries(medStats).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  let mh='<table class="table"><thead><tr><th>Pos</th><th>Medicamento</th><th>Qtd</th></tr></thead><tbody>'; topM.forEach((m,i)=> mh+=`<tr><td>${i+1}</td><td>${m[0]}</td><td>${m[1]}</td></tr>`); mh+='</tbody></table>'; document.getElementById('topMedicationsReport').innerHTML = mh;
+
+  // slow moving
+  const stock = calculateStock(); const slow=[];
+  stock.forEach(s=> s.batches.forEach(b=>{ const entry = entries.find(en => en.medName===s.medName && en.batch===b.batch && en.expiryDate===b.expiryDate); if(entry){ const days = Math.floor((new Date() - new Date(entry.entryDate)) / (1000*60*60*24)); slow.push({med:s.medName,batch:b.batch,qty:b.quantity,days,entryDate:entry.entryDate}); } }));
+  slow.sort((a,b)=>b.days-a.days); let sh='<table class="table"><thead><tr><th>Med</th><th>Lote</th><th>Qtd</th><th>Dias</th></tr></thead><tbody>'; slow.slice(0,10).forEach(s=> sh+=`<tr><td>${s.med}</td><td>${s.batch||'-'}</td><td>${s.qty}</td><td>${s.days}</td></tr>`); sh+='</tbody></table>'; document.getElementById('slowMovingReport').innerHTML = sh;
+
+  const totalEntries = entries.reduce((s,e)=>s+e.quantity,0); const totalExits = exits.reduce((s,e)=>s+e.quantity,0); const curr = stock.reduce((s,i)=>s+i.quantity,0);
+  document.getElementById('movementSummary').innerHTML = `<div class="muted">Entradas: ${totalEntries} • Saídas: ${totalExits} • Estoque atual: ${curr}</div>`;
+}
+
+// Confirm actions
+window.confirmDeleteEntry = function(id){ if(confirm('Excluir entrada?')) deleteEntryFromFirestore(id); }
+window.confirmCancelExit = function(id){ if(confirm('Cancelar saída?')) deleteExitFromFirestore(id); }
+
+// Forms
+document.getElementById('entryForm').addEventListener('submit', async function(e){
+  e.preventDefault();
+  const entryDate = document.getElementById('entryDate').value;
+  const donorName = document.getElementById('donorName').value.trim();
+  const medName = document.getElementById('medName').value.trim();
+  const quantity = parseInt(document.getElementById('quantity').value);
+  const expiryDate = document.getElementById('expiryDate').value;
+  const batch = document.getElementById('batch').value.trim();
+  const observations = document.getElementById('observations').value.trim();
+  if(new Date(expiryDate) < new Date()){ alert('Data de validade inválida'); return; }
+  await addEntryToFirestore({ entryDate, donorName, medName, quantity, expiryDate, batch, observations });
+  this.reset(); document.getElementById('entryDate').valueAsDate = new Date();
+});
+
+document.getElementById('exitForm').addEventListener('submit', async function(e){
+  e.preventDefault();
+  const exitDate = document.getElementById('exitDate').value;
+  const recipientName = document.getElementById('recipientName').value.trim();
+  const responsibleName = document.getElementById('responsibleName').value.trim();
+  let medName = document.getElementById('exitMedication').value;
+  let quantity = parseInt(document.getElementById('exitQuantity').value);
+  if(!medName){ alert('Selecione medicamento'); return; }
+  const stock = calculateStock(); const medStock = stock.find(s=> s.medName===medName);
+  if(!medStock || medStock.quantity < quantity){ alert('Quantidade não disponível'); return; }
+  const batches = getAvailableBatches(medName); let rem = quantity; const used = []; for(const b of batches){ if(rem<=0) break; const use = Math.min(b.available, rem); used.push({...b, usedQty:use}); rem -= use; }
+  for(const u of used){ await addExitToFirestore({ exitDate, recipientName, responsibleName, medName, quantity:u.usedQty, expiryDate:u.expiryDate, batch:u.batch }); }
+  this.reset(); document.getElementById('exitDate').valueAsDate = new Date(); document.getElementById('availableInfo').style.display='none';
+});
+
+// Update available info when medication selection changes
+document.getElementById('exitMedication').addEventListener('change', function(e){
+  const med = this.value; const info = document.getElementById('availableInfo');
+  if(!med){ info.style.display='none'; return; }
+  const batches = getAvailableBatches(med); const total = batches.reduce((s,b)=> s+b.available,0);
+  let html = `<div><strong>Disponível:</strong> ${total} unidades</div><div style="margin-top:6px"><strong>Lotes (FEFO):</strong>`;
+  batches.forEach((b,i)=> html += `<div style="font-size:13px">${i+1}. ${b.batch||'-'} — ${b.available} un — Val: ${formatDate(b.expiryDate)} ${ getExpiryStatus(b.expiryDate)==='warning' ? '⚠️' : getExpiryStatus(b.expiryDate)==='expired' ? '❌' : '✅' }</div>`);
+  html += '</div>'; info.innerHTML = html; info.style.display='block';
+});
+
+// Search inputs
+['entrySearch','exitSearch','stockSearch'].forEach(id => document.getElementById(id).addEventListener('input', ()=>{ renderEntryTable(); renderExitTable(); renderStockTable(); }));
+['entrySort','exitSort','stockFilter','stockSort'].forEach(id => document.getElementById(id).addEventListener('change', ()=>{ renderEntryTable(); renderExitTable(); renderStockTable(); }));
+
+// Top nav behavior (SPA)
+document.querySelectorAll('nav.topnav button').forEach(btn => {
+  btn.addEventListener('click', (e)=>{
+    document.querySelectorAll('nav.topnav button').forEach(b=>b.classList.remove('active'));
+    e.target.classList.add('active');
+    const view = e.target.getAttribute('data-view');
+    document.querySelectorAll('.view').forEach(v=> v.style.display='none');
+    document.getElementById('view-'+view).style.display = 'block';
+    // refresh view-specific
+    if(view==='dashboard') updateDashboard();
+    if(view==='saida') updateExitMedicationDropdown();
+    if(view==='estoque') renderStockTable();
+    if(view==='relatorios') generateReports();
+  });
+});
+
+// Refresh btn
+document.getElementById('refreshBtn').addEventListener('click', ()=>{ renderEntryTable(); renderExitTable(); renderStockTable(); updateDashboard(); generateReports(); });
+
+// Initialize app
+document.addEventListener('DOMContentLoaded', ()=>{
+  document.getElementById('entryDate').valueAsDate = new Date();
+  document.getElementById('exitDate').valueAsDate = new Date();
+  listenEntries();
+  listenExits();
+  // status
+  document.getElementById('userStatus').textContent = 'Conectado (Firestore)';
+});
+</script>
+</body>
+</html>
